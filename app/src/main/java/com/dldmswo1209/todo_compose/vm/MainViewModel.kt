@@ -22,4 +22,8 @@ class MainViewModel(application: Application) : ViewModel() {
     fun insertTodo(todo: Todo){
         repository.insertTodo(todo)
     }
+
+    fun deleteTodo(todo: Todo){
+        repository.deleteTodo(todo)
+    }
 }

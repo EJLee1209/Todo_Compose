@@ -1,5 +1,6 @@
 package com.dldmswo1209.todo_compose.model
 
+import androidx.compose.runtime.MutableState
 import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.PrimaryKey

@@ -2,6 +2,7 @@ package com.dldmswo1209.todo_compose.dao
 
 import androidx.lifecycle.LiveData
 import androidx.room.Dao
+import androidx.room.Delete
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
@@ -15,4 +16,6 @@ interface TodoDao {
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     fun insertTodo(todo: Todo)
 
+    @Delete
+    fun deleteTodo(todo: Todo)
 }

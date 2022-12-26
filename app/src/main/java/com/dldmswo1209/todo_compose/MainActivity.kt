@@ -10,10 +10,14 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.livedata.observeAsState
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
@@ -36,6 +40,7 @@ import androidx.navigation.compose.rememberNavController
 import com.dldmswo1209.todo_compose.model.Todo
 import com.dldmswo1209.todo_compose.ui.theme.Todo_ComposeTheme
 import com.dldmswo1209.todo_compose.vm.MainViewModel
+import kotlinx.coroutines.NonDisposableHandle.parent
 import java.time.LocalDate
 
 class MainActivity : ComponentActivity() {
@@ -83,6 +88,12 @@ class RouteAction(navHostController: NavHostController){
 fun NavGraph(vm: MainViewModel,startRoute: NavRoute = NavRoute.MAIN){
 
     val allTodo by vm.allTodo.observeAsState(listOf())
+    val onCheckedChange : (Boolean, Todo) -> Unit = { isChecked, todo->
+        if(isChecked) vm.deleteTodo(todo)
+    }
+    val onAddTodo: (Todo) -> Unit = {
+        vm.insertTodo(it)
+    }
 
     val navController = rememberNavController()
 
@@ -90,19 +101,21 @@ fun NavGraph(vm: MainViewModel,startRoute: NavRoute = NavRoute.MAIN){
 
     NavHost(navController, startRoute.routeName){
         composable(NavRoute.MAIN.routeName){
-            MainScreen(routeAction, allTodo)
+            MainScreen(routeAction, allTodo, onCheckedChange = onCheckedChange)
         }
         composable(NavRoute.WRITE.routeName){
-            TodoWriteScreen(routeAction, vm)
+            TodoWriteScreen(routeAction, onAddTodo)
         }
     }
 
 }
-
-
-
+// 메인 화면
 @Composable
-fun MainScreen(routeAction: RouteAction, allTodo: List<Todo>){
+fun MainScreen(
+    routeAction: RouteAction,
+    allTodo: List<Todo>,
+    onCheckedChange: (Boolean, Todo) -> Unit
+){
     Surface() {
         Scaffold(
             floatingActionButtonPosition = FabPosition.End,
@@ -131,40 +144,73 @@ fun MainScreen(routeAction: RouteAction, allTodo: List<Todo>){
                         .background(Color(0xFF202020), shape = RoundedCornerShape(10.dp))
                         .fillMaxSize()
                 ) {
-                    TodoListView(allTodo)
+                    TodoListView(allTodo, onCheckedChange)
                 }
             }
         }
     }
 }
 
-
+// 할 일 목록 리스트 뷰
 @Composable
-fun TodoListView(allTodo: List<Todo>){
+fun TodoListView(
+    allTodo: List<Todo>,
+    onCheckedChange: (Boolean, Todo) -> Unit
+){
     LazyColumn(){
-        items(allTodo){
-            TodoItem(todo = it)
+        items(
+            items=allTodo,
+            key = { it.id }
+        ){
+            TodoItem(todo = it, onCheckedChange)
         }
     }
 }
-
+// 할 일 목록 아이템
 @Composable
-fun TodoItem(todo: Todo){
-    Column(
-        Modifier
-            .fillMaxWidth()
-            .padding(10.dp),
+fun TodoItem(
+    todo: Todo,
+    onCheckedChange: (Boolean,Todo) -> Unit
+){
+    var checkedState by rememberSaveable { mutableStateOf(false) }
+    Row(
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(text = todo.content, style =TextStyle(Color.White, 16.sp, FontWeight.Bold))
-        Spacer(modifier = Modifier.size(4.dp))
-        Text(text = todo.date, style = TextStyle(Color.White, 16.sp, FontWeight.Medium))
-        Spacer(modifier = Modifier.size(8.dp))
-        Divider(color = Color(0xFF303030), thickness = 2.dp)
+        Column(
+            Modifier
+                .weight(1f)
+                .padding(10.dp),
+        ) {
+            Text(text = todo.content, style =TextStyle(Color.White, 16.sp, FontWeight.Bold))
+            Spacer(modifier = Modifier.size(4.dp))
+            Text(text = todo.date, style = TextStyle(Color.White, 16.sp, FontWeight.Medium))
+            Spacer(modifier = Modifier.size(8.dp))
+            Divider(color = Color(0xFF303030), thickness = 2.dp)
+        }
+
+        Checkbox(
+            checked = checkedState,
+            onCheckedChange =
+            {
+                onCheckedChange(it, todo)
+                checkedState = it
+            },
+            colors = CheckboxDefaults.colors(
+                checkedColor = MaterialTheme.colors.surface,
+                uncheckedColor = Color(0xFFFFE082),
+                checkmarkColor = Color.White
+            ),
+            modifier = Modifier.padding(end=10.dp)
+        )
     }
+
 }
 
 @Composable
-fun TodoWriteScreen(routeAction: RouteAction, viewModel: MainViewModel){
+fun TodoWriteScreen(
+    routeAction: RouteAction,
+    onAddTodo: (Todo)->Unit
+){
 
     var todoInput by remember { mutableStateOf(TextFieldValue()) }
     val date = LocalDate.now().toString()
@@ -201,7 +247,7 @@ fun TodoWriteScreen(routeAction: RouteAction, viewModel: MainViewModel){
                     // 데이터 저장 후 리스트에 데이터 보여줘야 함
                     val content = todoInput.text
                     val todo = Todo(0, content, date)
-                    viewModel.insertTodo(todo)
+                    onAddTodo(todo)
                     routeAction.goBack()
                 }
         )

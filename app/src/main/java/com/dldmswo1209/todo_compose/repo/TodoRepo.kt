@@ -17,5 +17,14 @@ class TodoRepo(private val todoDao: TodoDao) {
         }
     }
 
+    fun deleteTodo(todo: Todo){
+        coroutineScope.launch(Dispatchers.IO) {
+            async {
+                delay(500)
+            }.await()
+            todoDao.deleteTodo(todo)
+        }
+    }
+
 
 }
